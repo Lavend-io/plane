@@ -11,52 +11,97 @@
             align-items: center;
             min-height: 100vh;
             margin: 0;
-            background-color: #f0f0f0;
-            font-family: sans-serif;
-            overflow: hidden; /* キャンバス外へのスクロールを防ぐ */
-            position: relative; /* UIボタンの配置のために必要 */
+            background-color: #ADD8E6; /* 薄い水色 */
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            position: relative;
+            /* 飛行機のシルエットを背景に繰り返し表示 */
+            background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAhUlEQVQ4T2NkYGBg+M+ACUc+IwgcwAhFAzEwMDg0MDAwNgZGBgYGYwMDEwMYAImAgYQoQFIUgCjhCAQowGQoQAYkUAUkwFQQgJhUgEwpgMQpQCI0oAEQpAERZgAQAo4m40xhlSUAAAAASUVORK5CYII=');
+            background-repeat: repeat;
         }
         canvas {
             border: 2px solid #333;
             background-color: #87CEEB; /* 空のイメージ */
-            display: block; /* 余白をなくす */
-            max-width: 100%; /* スマホ画面にフィットさせる */
-            height: auto; /* アスペクト比を維持 */
+            display: block;
+            max-width: 100%;
+            height: auto;
         }
-        #message-overlay {
-            position: absolute;
+        #message-overlay, #rules-overlay {
+            position: fixed; /* absolute から fixed に変更して、常にビューポート全体を覆うように */
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.7);
+            width: 100vw; /* 常にビューポートの幅 */
+            height: 100vh; /* 常にビューポートの高さ */
+            background-color: rgba(0, 0, 0, 0.9); /* さらに不透明度を上げて、下の要素を隠す */
             color: white;
-            font-size: 4em;
             display: flex;
-            justify-content: center;
-            align-items: center;
+            justify-content: center; /* 中央揃え */
+            align-items: center;     /* 中央揃え */
             flex-direction: column;
             text-align: center;
-            display: none; /* 初期状態では非表示 */
+            display: none;
             z-index: 100;
+            padding: 20px;
+            box-sizing: border-box;
         }
-        #message-overlay button {
-            font-size: 1.5em;
-            padding: 10px 20px;
-            margin-top: 20px;
+        #rules-overlay > div { /* ルールコンテンツを囲む新しいdivを追加（中央寄せ用） */
+            max-width: 700px;
+            width: 90%; /* 画面幅の90%を最大に */
+            background-color: rgba(0, 0, 0, 0.8); /* コンテンツの背景色を少し明るく */
+            border-radius: 15px;
+            padding: 20px;
+            box-sizing: border-box;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+            text-align: left; /* テキストを左寄せに */
+            overflow-y: auto; /* コンテンツがはみ出したらスクロール可能に */
+            max-height: 90vh; /* 画面高の90%を最大に */
+        }
+        #rules-overlay h2 {
+            font-size: 2.5em;
+            margin-bottom: 25px;
+            color: #FFD700;
+            text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.5);
+            text-align: center;
+        }
+        #rules-overlay h3 {
+            font-size: 1.8em;
+            margin-top: 25px;
+            margin-bottom: 15px;
+            color: #ADD8E6;
+            text-align: center;
+        }
+        #rules-overlay p, #rules-overlay ul, #rules-overlay ol {
+            margin-bottom: 15px;
+            padding: 0 20px;
+            text-align: left;
+        }
+        #rules-overlay li {
+            margin-bottom: 8px;
+        }
+        #rules-overlay strong {
+            color: #FFECB3;
+        }
+        #message-overlay button, #rules-overlay button {
+            font-size: 1.6em;
+            padding: 12px 25px;
+            margin-top: 30px;
             cursor: pointer;
+            border: none;
+            border-radius: 8px;
+            background-color: #4CAF50;
+            color: white;
+            transition: background-color 0.3s, transform 0.1s;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
         }
-        /* #emergency-message { 緊急着陸要素削除のため不要
-            color: red;
-            font-size: 5em;
-            text-shadow: 0 0 10px white;
-            animation: blink 0.8s infinite;
-        } */
-        @keyframes blink {
-            0% { opacity: 1; }
-            50% { opacity: 0; }
-            100% { opacity: 1; }
+        #message-overlay button:hover, #rules-overlay button:hover {
+            background-color: #45a049;
+            transform: translateY(-2px);
         }
+        #message-overlay button:active, #rules-overlay button:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
         #timer-display, #landing-guide {
             position: absolute;
             top: 10px;
@@ -69,27 +114,54 @@
             border-radius: 5px;
             display: none;
             line-height: 1.4;
-            z-index: 20; /* キャンバスより手前に表示 */
+            z-index: 20;
         }
         #landing-guide {
             top: 10px;
             right: 10px;
-            left: auto; /* 右寄せにするため */
+            left: auto;
             text-align: left;
         }
-        #game-title { /* ゲームタイトルのスタイル */
+        #game-title {
             position: absolute;
             top: 10px;
             left: 50%;
             transform: translateX(-50%);
-            color: pink; /* タイトル色 */
+            color: pink;
             font-size: 2.5em;
             font-weight: bold;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7); /* 影で視認性向上 */
-            z-index: 50; /* 他の要素より手前に表示 */
-            pointer-events: none; /* クリックイベントを無効化 */
-            white-space: nowrap; /* タイトルが改行されないように */
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+            z-index: 50;
+            pointer-events: none;
+            white-space: nowrap;
         }
+
+        /* ゲーム中ルール確認ボタンのスタイル */
+        #show-rules-button {
+            position: absolute;
+            top: 50px;
+            left: 10px;
+            font-size: 1.2em;
+            padding: 8px 15px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: #6495ED;
+            color: white;
+            z-index: 110;
+            display: none;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            transition: background-color 0.3s, transform 0.1s;
+        }
+        #show-rules-button:hover {
+            background-color: #558BEF;
+            transform: translateY(-1px);
+        }
+        #show-rules-button:active {
+            transform: translateY(0);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+        }
+
 
         /* スマートフォン用操作ボタンのスタイル */
         .controls-container {
@@ -99,9 +171,9 @@
             display: flex;
             justify-content: space-between;
             align-items: flex-end;
-            z-index: 60; /* キャンバスより手前に表示 */
+            z-index: 60;
             padding: 0 10px;
-            box-sizing: border-box; /* パディングを幅に含める */
+            box-sizing: border-box;
         }
 
         .control-button {
@@ -112,11 +184,11 @@
             border-radius: 10px;
             font-size: 1.8em;
             cursor: pointer;
-            user-select: none; /* テキスト選択を無効化 */
-            touch-action: manipulation; /* ダブルタップズームを防ぐ */
+            user-select: none;
+            touch-action: manipulation;
             opacity: 0.8;
             transition: opacity 0.2s;
-            flex-shrink: 0; /* ボタンが縮まないように */
+            flex-shrink: 0;
         }
 
         .control-button:active {
@@ -126,7 +198,7 @@
 
         .horizontal-controls {
             display: flex;
-            gap: 10px; /* ボタン間の隙間 */
+            gap: 10px;
         }
 
         .vertical-controls {
@@ -140,9 +212,8 @@
             position: absolute;
             top: 0;
             height: 100%;
-            width: 25%; /* 画面の25%を左右の操作エリアとする */
-            z-index: 10; /* キャンバスより上、UIボタンより下 */
-            /* background-color: rgba(255, 0, 0, 0.1); /* デバッグ用 */
+            width: 25%;
+            z-index: 10;
         }
 
         #left-touch-area {
@@ -156,7 +227,7 @@
         /* スマホでの表示を調整 */
         @media (max-width: 768px) {
             #game-title {
-                font-size: 1.8em; /* スマホではタイトルを少し小さく */
+                font-size: 1.8em;
             }
             #message-overlay {
                 font-size: 2.5em;
@@ -165,12 +236,37 @@
                 font-size: 1.2em;
                 padding: 8px 15px;
             }
-            /* #emergency-message { 緊急着陸要素削除のため不要
-                font-size: 3em;
-            } */
+            #rules-overlay > div { /* スマホ向け調整 */
+                font-size: 0.9em;
+                padding: 15px;
+                width: 95%; /* より画面いっぱいに */
+                max-height: 95vh;
+            }
+            #rules-overlay h2 {
+                font-size: 1.8em;
+                margin-bottom: 15px;
+            }
+            #rules-overlay h3 {
+                font-size: 1.3em;
+                margin-top: 15px;
+                margin-bottom: 10px;
+            }
+            #rules-overlay p, #rules-overlay ul, #rules-overlay ol {
+                padding: 0 10px;
+            }
+            #rules-overlay button {
+                font-size: 1.2em;
+                padding: 10px 20px;
+                margin-top: 20px;
+            }
             #timer-display, #landing-guide {
                 font-size: 1em;
                 padding: 3px 6px;
+            }
+            #show-rules-button {
+                font-size: 1em;
+                padding: 6px 12px;
+                top: 40px;
             }
             .control-button {
                 padding: 10px 15px;
@@ -183,6 +279,7 @@
     <canvas id="gameCanvas" width="800" height="600"></canvas>
     <div id="game-title">飛び立て！未来の空へ！</div>
     <div id="timer-display"></div>
+    <button id="show-rules-button">ルール</button>
     <div id="landing-guide"></div>
 
     <div class="controls-container">
@@ -202,7 +299,31 @@
     <div id="message-overlay">
         <span id="game-status-message"></span>
         <button id="restart-button">リトライ</button>
+    </div>
+
+    <div id="rules-overlay">
+        <div> <h2>✈️ 未来のパイロットよ、準備はいいか？ ✈️</h2>
+            <p>
+                このゲームは、君の操縦スキルが試される、スリリングなフライトシミュレーターだ！<br>
+                大空を駆け巡り、無事に着陸できるか挑戦しよう！
+            </p>
+            <h3>🚀 操作方法</h3>
+            <ul>
+                <li><strong>キーボード:</strong> 矢印キー (↑ 上昇, ↓ 下降, ← 左移動, → 右移動)</li>
+                <li><strong>スマートフォン:</strong> 画面下の操作ボタン、または画面左右の仮想タッチエリアをタップ！</li>
+            </ul>
+            <h3>🎮 ゲームの流れ</h3>
+            <ol>
+                <li><strong>離陸準備 & 許可:</strong> 管制塔からの指示を待とう！</li>
+                <li><strong>大空へテイクオフ！:</strong> 地上で十分に加速したら、機首を上げて離陸だ！</li>
+                <li><strong>フライトタイム (20秒):</strong> 雲の上を自由に飛行！ただし、他の飛行機との衝突には要注意！</li>
+                <li><strong>着陸許可 & アプローチ:</strong> 飛行時間が終わると、着陸の指示が来るぞ。</li>
+                <li><strong>安全に着陸！:</strong> 滑走路を目指して、慎重に高度と速度を調整だ！特に、接地時の「垂直速度」をゆっくりに、そして「滑走路の真ん中」に着地できれば大成功！</li>
+            </ol>
+            <p>さあ、君のフライトが始まる！安全な着陸を目指して、最高のパイロットになろう！</p>
+            <button id="start-game-button">ゲームスタート！</button>
         </div>
+    </div>
 
     <script>
         const canvas = document.getElementById('gameCanvas');
@@ -210,10 +331,16 @@
         const messageOverlay = document.getElementById('message-overlay');
         const gameStatusMessage = document.getElementById('game-status-message');
         const restartButton = document.getElementById('restart-button');
-        // const emergencyMessageDiv = document.getElementById('emergency-message'); // 緊急着陸要素削除
         const timerDisplay = document.getElementById('timer-display');
         const landingGuide = document.getElementById('landing-guide');
         const gameTitleDisplay = document.getElementById('game-title');
+
+        // ルール説明関連要素
+        const rulesOverlay = document.getElementById('rules-overlay');
+        const startGameButton = document.getElementById('start-game-button');
+
+        // ゲーム中ルール確認ボタン
+        const showRulesButton = document.getElementById('show-rules-button');
 
         // スマホ操作ボタン要素
         const upButton = document.getElementById('up-button');
@@ -226,11 +353,6 @@
         const leftTouchArea = document.getElementById('left-touch-area');
         const rightTouchArea = document.getElementById('right-touch-area');
 
-
-        // const warningSound = new Audio('https://freesound.org/data/previews/144/144422_2644265-lq.mp3'); // 緊急着陸要素削除
-        // warningSound.loop = true; // 緊急着陸要素削除
-        // warningSound.volume = 0.3; // 緊急着陸要素削除
-
         // 音声読み上げオブジェクトの準備
         const synth = window.speechSynthesis;
         const utterance = new SpeechSynthesisUtterance();
@@ -241,13 +363,10 @@
 
         // ゲームの状態
         let gameActive = false; // 初期状態では操作不可
-        // let emergencyLandingEventActive = false; // 緊急着陸要素削除
-        // let emergencyLandingStartTime = 0; // 緊急着陸要素削除
-        // const emergencyLandingDuration = 5000; // 緊急着陸要素削除
 
         // ゲームフェーズ管理
         const GAME_PHASE = {
-            INITIAL_WAIT: 0,
+            RULES_EXPLANATION: 0, // 新しいフェーズ
             TAKEOFF_CLEARANCE: 1,
             FLIGHT: 2,
             LANDING_CLEARANCE: 3,
@@ -255,7 +374,7 @@
             GAME_OVER: 5,
             GAME_CLEAR: 6
         };
-        let currentPhase = GAME_PHASE.INITIAL_WAIT;
+        let currentPhase = GAME_PHASE.RULES_EXPLANATION; // 初期フェーズをルール説明に設定
 
         // 離陸許可メッセージ関連
         let showTakeOffClearance = true;
@@ -288,7 +407,6 @@
         const maxGroundSpeed = 5;
         const maxAirSpeedY = 8; // 最大上昇・下降速度
         let isInAir = false;
-        // const flightAltitudeThreshold = 150; // 雲が出現し始める高度 (canvas.height - 150より上) // 未使用のため削除
         const airportDisappearAltitude = initialCanvasHeight - 200; // この高度を超えると空港が消える
         const airportReappearAltitude = initialCanvasHeight - 100; // この高度を下回ると空港が出現
 
@@ -300,7 +418,6 @@
         const runwayLineWidth = 5;
 
         // 空港施設の設定 (原寸大の比率で初期化)
-        // const airportBaseY = runwayY + runwayHeight; // 未使用のため削除
         const terminalWidth = 150;
         const terminalHeight = 80;
         const terminalColor = '#A9A9A9';
@@ -396,30 +513,24 @@
             planeSpeedY = 0;
             isInAir = false;
             gameActive = false;
-            // emergencyLandingEventActive = false; // 緊急着陸要素削除
-            // emergencyLandingStartTime = 0; // 緊急着陸要素削除
             clouds.length = 0;
             otherPlanes.length = 0;
             otherPlaneSpawnTimer = 0;
             flightTimeElapsed = 0;
             timerDisplay.style.display = 'none';
             landingGuide.style.display = 'none';
-            // warningSound.pause(); // 緊急着陸要素削除
-            // warningSound.currentTime = 0; // 緊急着陸要素削除
 
             messageOverlay.style.display = 'none';
-            // emergencyMessageDiv.style.display = 'none'; // 緊急着陸要素削除
 
             showTakeOffClearance = true;
             takeOffClearanceSpoken = false;
             showLandingClearance = false;
             landingClearanceSpoken = false;
 
-            currentPhase = GAME_PHASE.TAKEOFF_CLEARANCE; // 開始フェーズを設定
-            takeOffClearanceStartTime = Date.now();
-
-            // 操作ボタンを表示状態に戻す（離陸前なので）
-            showControls();
+            currentPhase = GAME_PHASE.RULES_EXPLANATION; // リセット時もルール説明から開始
+            showRulesExplanation(); // ルール説明を表示
+            hideControls(); // 操作ボタンを隠す
+            showRulesButton.style.display = 'none'; // リセット時はルール表示ボタンを非表示
         }
 
         // 操作ボタンの表示/非表示を切り替える関数
@@ -429,11 +540,50 @@
             rightTouchArea.style.display = 'block';
         }
 
-        // function hideControls() { // 常に表示するので不要
-        //     controlsContainer.style.display = 'none';
-        //     leftTouchArea.style.display = 'none';
-        //     rightTouchArea.style.display = 'none';
-        // }
+        function hideControls() {
+            controlsContainer.style.display = 'none';
+            leftTouchArea.style.display = 'none';
+            rightTouchArea.style.display = 'none';
+        }
+
+        // ルール説明の表示/非表示
+        function showRulesExplanation() {
+            rulesOverlay.style.display = 'flex';
+            gameTitleDisplay.style.display = 'block'; // タイトルを表示
+            canvas.style.display = 'none'; // ゲームキャンバスを非表示にする
+            showRulesButton.style.display = 'none'; // ルール表示中はボタンを非表示
+            timerDisplay.style.display = 'none'; // タイマーを非表示
+            landingGuide.style.display = 'none'; // 着陸ガイドを非表示
+            hideControls(); // 操作ボタンを非表示
+            gameActive = false; // ルール表示中はゲームを一時停止
+        }
+
+        function hideRulesExplanation() {
+            rulesOverlay.style.display = 'none';
+            gameTitleDisplay.style.display = 'none'; // タイトルを隠す
+            canvas.style.display = 'block'; // ゲームキャンバスを表示する
+            // ゲームがアクティブまたは特定のフェーズの場合はルール表示ボタンを表示
+            if (currentPhase !== GAME_PHASE.RULES_EXPLANATION &&
+                currentPhase !== GAME_PHASE.GAME_OVER &&
+                currentPhase !== GAME_PHASE.GAME_CLEAR) {
+                showRulesButton.style.display = 'block';
+            }
+            // 各フェーズに応じてUI要素を再表示
+            if (currentPhase === GAME_PHASE.TAKEOFF_CLEARANCE) {
+                // TAKEOFF_CLEARANCEはゲームActiveではないが、操作ボタンを表示したい
+                showControls();
+            } else if (currentPhase === GAME_PHASE.FLIGHT) {
+                showControls();
+                timerDisplay.style.display = 'block';
+                gameActive = true; // ゲームを再開
+            } else if (currentPhase === GAME_PHASE.LANDING_CLEARANCE) {
+                showControls();
+            } else if (currentPhase === GAME_PHASE.LANDING) {
+                showControls();
+                landingGuide.style.display = 'block';
+                gameActive = true; // ゲームを再開
+            }
+        }
 
         /**
          * 滑走路を描画する関数
@@ -443,26 +593,48 @@
             const scaleY = canvas.height / initialCanvasHeight;
             const scaledRunwayY = canvas.height - runwayHeight * scaleY;
             const scaledRunwayHeight = runwayHeight * scaleY;
-            const scaledRunwayLineWidth = runwayLineWidth * scaleY;
-
+            
             ctx.fillStyle = runwayColor;
             ctx.fillRect(0, scaledRunwayY, canvas.width, scaledRunwayHeight);
+            
+            // 滑走路の中心線 (白い点線)
             ctx.strokeStyle = runwayLineColor;
-            ctx.lineWidth = scaledRunwayLineWidth;
-            
-            const lineDashLength = 20 * (canvas.width / initialCanvasWidth);
-            const lineGapLength = 30 * (canvas.width / initialCanvasWidth);
-            const numDashes = canvas.width / (lineDashLength + lineGapLength);
-            
+            ctx.lineWidth = 4 * scaleY; // 線幅を少し太くする
+            ctx.setLineDash([2 * (canvas.width / initialCanvasWidth), 20 * (canvas.width / initialCanvasWidth)]); // 短い線と長めの間隔で点線風
             ctx.beginPath();
-            for (let i = 0; i < numDashes; i++) {
-                const startX = i * (lineDashLength + lineGapLength);
-                ctx.moveTo(startX, scaledRunwayY + scaledRunwayHeight / 2);
-                ctx.lineTo(startX + lineDashLength, scaledRunwayY + scaledRunwayHeight / 2);
-            }
+            ctx.moveTo(0, scaledRunwayY + scaledRunwayHeight / 2);
+            ctx.lineTo(canvas.width, scaledRunwayY + scaledRunwayHeight / 2);
+            ctx.stroke();
+            ctx.setLineDash([]); // 線ダッシュをリセット (他の描画に影響を与えないように)
+
+            // 滑走路の境界線 (白い実線)
+            ctx.strokeStyle = runwayLineColor;
+            ctx.lineWidth = 5 * scaleY; // 線幅を調整
+            ctx.beginPath();
+            ctx.moveTo(0, scaledRunwayY);
+            ctx.lineTo(canvas.width, scaledRunwayY);
+            ctx.moveTo(0, scaledRunwayY + scaledRunwayHeight);
+            ctx.lineTo(canvas.width, scaledRunwayY + scaledRunwayHeight);
             ctx.stroke();
         }
-
+         function drawRunway() {
+             ctx.fillStyle = runwayColor;
+             ctx.fillRect(0, runwayY, canvas.width, runwayHeight);
+ 
+             // 滑走路のラインを描画
+             ctx.strokeStyle = runwayLineColor;
+             ctx.lineWidth = runwayLineWidth;
+             const lineDashLength = 20;
+             const lineGapLength = 30;
+             const numDashes = canvas.width / (lineDashLength + lineGapLength);
+             ctx.beginPath();
+             for (let i = 0; i < numDashes; i++) {
+                 const startX = i * (lineDashLength + lineGapLength);
+                 ctx.moveTo(startX, runwayY + runwayHeight / 2);
+                 ctx.lineTo(startX + lineDashLength, runwayY + runwayHeight / 2);
+             }
+             ctx.stroke();
+         }
         /**
          * 空港施設を描画する関数
          * スケールを考慮して描画
@@ -540,6 +712,11 @@
          * ゲームの状態を更新する関数
          */
         function updateGame() {
+            // ルール説明フェーズ
+            if (currentPhase === GAME_PHASE.RULES_EXPLANATION) {
+                return;
+            }
+
             if (!gameActive) {
                 // 各フェーズの開始待機
                 switch(currentPhase) {
@@ -554,6 +731,7 @@
                             currentPhase = GAME_PHASE.FLIGHT;
                             flightTimeElapsed = 0; // 飛行時間計測開始
                             timerDisplay.style.display = 'block';
+                            showControls(); // 飛行中は操作ボタンを表示
                         }
                         break;
                     case GAME_PHASE.LANDING_CLEARANCE:
@@ -654,17 +832,6 @@
                 if (planeX < planeWidth / 2) planeX = planeWidth / 2;
                 if (planeX > initialCanvasWidth - planeWidth / 2) planeX = initialCanvasWidth - planeWidth / 2;
                 
-                // 強制着陸イベント中の処理（削除）
-                // if (emergencyLandingEventActive) {
-                //     const timeRemaining = Math.max(0, emergencyLandingDuration - (Date.now() - emergencyLandingStartTime));
-                //     emergencyMessageDiv.innerText = `緊急着陸まで: ${Math.ceil(timeRemaining / 1000)}秒`;
-                //     if (timeRemaining <= 0) {
-                //         gameOver('緊急着陸時間切れ！不時着に失敗しました。');
-                //         return;
-                //     }
-                //     planeSpeedY = Math.min(maxAirSpeedY, planeSpeedY + gravity * 1.5);
-                // }
-
                 // 着陸判定: LANDINGフェーズ中
                 const currentScaledTargetLandingAltitude = targetLandingAltitude;
                 const currentScaledLandingAltitudeTolerance = landingAltitudeTolerance * (canvas.height / initialCanvasHeight);
@@ -704,7 +871,7 @@
                     if (clouds.length < maxClouds && Math.random() < 0.01) {
                         clouds.push({
                             x: initialCanvasWidth,
-                            y: Math.random() * (initialCanvasHeight - runwayHeight - 100),
+                            y: Math.random() * (initialCanvasHeight - runwayHeight - 100) + 50, /* 雲のY座標を調整 */
                             size: Math.random() * 50 + 30
                         });
                     }
@@ -717,7 +884,7 @@
                 }
 
                 // 他の飛行機の生成と移動 (FLIGHTフェーズ中のみ)
-                if (currentPhase === GAME_PHASE.FLIGHT) { // && !emergencyLandingEventActive を削除
+                if (currentPhase === GAME_PHASE.FLIGHT) {
                     otherPlaneSpawnTimer++;
                     if (otherPlanes.length < maxOtherPlanes && otherPlaneSpawnTimer >= otherPlaneSpawnInterval) {
                         if (Math.random() < 0.5) { // 左から出現
@@ -762,11 +929,6 @@
                         }
                     }
                 }
-
-                // 緊急着陸イベントの開始 (削除)
-                // if (!emergencyLandingEventActive && currentPhase === GAME_PHASE.FLIGHT && Math.random() < 0.0005) {
-                //     startEmergencyLandingEvent();
-                // }
             }
         }
 
@@ -776,11 +938,16 @@
         function drawGame() {
             ctx.clearRect(0, 0, canvas.width, canvas.height); // 画面をクリア
 
+            // ルール説明中はゲーム要素を描画しない
+            if (currentPhase === GAME_PHASE.RULES_EXPLANATION) {
+                return;
+            }
+
             const scaleX = canvas.width / initialCanvasWidth;
             const scaleY = canvas.height / initialCanvasHeight;
 
             // 雲を描画 (飛行機の高度によって表示)
-            if (planeY < airportDisappearAltitude) {
+            if (planeY < airportDisappearAltitude && (currentPhase === GAME_PHASE.FLIGHT || currentPhase === GAME_PHASE.LANDING_CLEARANCE)) {
                 for (const cloud of clouds) {
                     drawCloud(cloud.x, cloud.y, cloud.size);
                 }
@@ -790,7 +957,7 @@
             const isAirportVisible = (currentPhase === GAME_PHASE.TAKEOFF_CLEARANCE || 
                                       currentPhase === GAME_PHASE.LANDING_CLEARANCE || 
                                       (currentPhase === GAME_PHASE.FLIGHT && planeY > airportDisappearAltitude) ||
-                                      (currentPhase === GAME_PHASE.LANDING && planeY > airportReappearAltitude)); // emergencyLandingEventActive を削除
+                                      (currentPhase === GAME_PHASE.LANDING && planeY > airportReappearAltitude));
 
             if (isAirportVisible) {
                 drawRunway();
@@ -827,7 +994,7 @@
             }
 
             // 着陸ガイドの表示
-            if (currentPhase === GAME_PHASE.LANDING && gameActive) { // emergencyLandingEventActive を削除
+            if (currentPhase === GAME_PHASE.LANDING && gameActive) {
                 landingGuide.style.display = 'block';
 
                 const currentAltitude = Math.floor(initialCanvasHeight - planeY);
@@ -870,15 +1037,14 @@
             currentPhase = GAME_PHASE.GAME_OVER;
             gameStatusMessage.innerText = message;
             messageOverlay.style.display = 'flex';
-            // emergencyMessageDiv.style.display = 'none'; // 緊急着陸要素削除
             timerDisplay.style.display = 'none';
             landingGuide.style.display = 'none';
-            // warningSound.pause(); // 緊急着陸要素削除
-            // warningSound.currentTime = 0; // 緊急着陸要素削除
+            showRulesButton.style.display = 'none'; // ゲームオーバー時はルールボタンを非表示
             if (synth.speaking) {
                 synth.cancel();
             }
-            showControls();
+            hideControls(); // 操作ボタンを隠す
+            canvas.style.display = 'none'; // ゲームオーバー時もキャンバスを非表示
         }
 
         /**
@@ -889,35 +1055,15 @@
             currentPhase = GAME_PHASE.GAME_CLEAR;
             gameStatusMessage.innerText = message;
             messageOverlay.style.display = 'flex';
-            // emergencyMessageDiv.style.display = 'none'; // 緊急着陸要素削除
             timerDisplay.style.display = 'none';
             landingGuide.style.display = 'none';
-            // warningSound.pause(); // 緊急着陸要素削除
-            // warningSound.currentTime = 0; // 緊急着陸要素削除
+            showRulesButton.style.display = 'none'; // ゲームクリア時はルールボタンを非表示
             if (synth.speaking) {
                 synth.cancel();
             }
-            showControls();
+            hideControls(); // 操作ボタンを隠す
+            canvas.style.display = 'none'; // ゲームクリア時もキャンバスを非表示
         }
-
-        /**
-         * 緊急着陸イベントを開始（削除）
-         */
-        // function startEmergencyLandingEvent() {
-        //     emergencyLandingEventActive = true;
-        //     emergencyMessageDiv.style.display = 'block';
-        //     emergencyLandingStartTime = Date.now();
-            
-        //     otherPlanes.length = 0;
-        //     otherPlaneSpawnTimer = 0;
-            
-        //     warningSound.play();
-        //     if (synth.speaking) {
-        //         synth.cancel();
-        //     }
-        //     speakMessage("Emergency! Emergency! Prepare for immediate landing!");
-        //     showControls();
-        // }
 
         /**
          * ゲームループ
@@ -930,7 +1076,12 @@
 
         // キーボードイベントリスナー
         document.addEventListener('keydown', (e) => {
-            if (!gameActive && e.key !== 'Space') return; // Spaceキーは後でスタートに使う可能性があるので残す
+            // ルール説明中はキーボード操作を無効化
+            if (currentPhase === GAME_PHASE.RULES_EXPLANATION) {
+                return;
+            }
+
+            if (!gameActive && e.key !== 'Space' && currentPhase !== GAME_PHASE.TAKEOFF_CLEARANCE && currentPhase !== GAME_PHASE.LANDING_CLEARANCE) return;
 
             if (keys.hasOwnProperty(e.key)) {
                 keys[e.key] = true;
@@ -947,7 +1098,9 @@
         function setupTouchButton(buttonElement, keyName) {
             buttonElement.addEventListener('touchstart', (e) => {
                 e.preventDefault();
-                if (gameActive) keys[keyName] = true;
+                // ルール説明中はタッチボタン操作を無効化
+                if (currentPhase === GAME_PHASE.RULES_EXPLANATION) return;
+                if (gameActive || currentPhase === GAME_PHASE.TAKEOFF_CLEARANCE || currentPhase === GAME_PHASE.LANDING_CLEARANCE) keys[keyName] = true;
             });
             buttonElement.addEventListener('touchend', (e) => {
                 e.preventDefault();
@@ -967,7 +1120,9 @@
         // 仮想タッチエリアのイベントリスナー
         leftTouchArea.addEventListener('touchstart', (e) => {
             e.preventDefault();
-            if (gameActive) keys.LeftButton = true;
+            // ルール説明中はタッチエリア操作を無効化
+            if (currentPhase === GAME_PHASE.RULES_EXPLANATION) return;
+            if (gameActive || currentPhase === GAME_PHASE.TAKEOFF_CLEARANCE || currentPhase === GAME_PHASE.LANDING_CLEARANCE) keys.LeftButton = true;
         });
         leftTouchArea.addEventListener('touchend', (e) => {
             e.preventDefault();
@@ -980,7 +1135,9 @@
 
         rightTouchArea.addEventListener('touchstart', (e) => {
             e.preventDefault();
-            if (gameActive) keys.RightButton = true;
+            // ルール説明中はタッチエリア操作を無効化
+            if (currentPhase === GAME_PHASE.RULES_EXPLANATION) return;
+            if (gameActive || currentPhase === GAME_PHASE.TAKEOFF_CLEARANCE || currentPhase === GAME_PHASE.LANDING_CLEARANCE) keys.RightButton = true;
         });
         rightTouchArea.addEventListener('touchend', (e) => {
             e.preventDefault();
@@ -995,12 +1152,27 @@
         // リトライボタンのイベントリスナー
         restartButton.addEventListener('click', resetGame);
 
+        // ゲームスタートボタンのイベントリスナー
+        startGameButton.addEventListener('click', () => {
+            hideRulesExplanation(); // ルール説明を隠す
+            // 最初のフェーズ（離陸許可）を開始
+            currentPhase = GAME_PHASE.TAKEOFF_CLEARANCE;
+            takeOffClearanceStartTime = Date.now();
+            // 操作ボタンを表示（離陸前から表示）
+            showControls();
+            showRulesButton.style.display = 'block'; // ゲーム開始後にルール表示ボタンを表示
+        });
+
+        // ルール表示ボタンのイベントリスナー
+        showRulesButton.addEventListener('click', showRulesExplanation);
+
+
         // ウィンドウリサイズイベント
         window.addEventListener('resize', resizeCanvas);
 
         // ゲーム開始
-        resizeCanvas();
-        resetGame();
+        resizeCanvas(); // 初期ロード時にもキャンバスサイズを調整
+        resetGame(); // 初期化時にルール説明を表示
         gameLoop();
     </script>
 </body>
