@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>飛び立て！未来の空へ！</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+            font-family: sans-serif;
+            overflow: hidden; /* キャンバス外へのスクロールを防ぐ */
+            position: relative; /* UIボタンの配置のために必要 */
+        }
+        canvas {
+            border: 2px solid #333;
+            background-color: #87CEEB; /* 空のイメージ */
+            display: block; /* 余白をなくす */
+            max-width: 100%; /* スマホ画面にフィットさせる */
+            height: auto; /* アスペクト比を維持 */
+        }
+        #message-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            font-size: 4em;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            text-align: center;
+            display: none; /* 初期状態では非表示 */
+            z-index: 100;
+        }
+        #message-overlay button {
+            font-size: 1.5em;
+            padding: 10px 20px;
+            margin-top: 20px;
+            cursor: pointer;
+        }
+        /* #emergency-message { 緊急着陸要素削除のため不要
+            color: red;
+            font-size: 5em;
+            text-shadow: 0 0 10px white;
+            animation: blink 0.8s infinite;
+        } */
+        @keyframes blink {
+            0% { opacity: 1; }
+            50% { opacity: 0; }
+            100% { opacity: 1; }
+        }
+        #timer-display, #landing-guide {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: #333;
+            font-size: 1.5em;
+            font-weight: bold;
+            background-color: rgba(255, 255, 255, 0.7);
+            padding: 5px 10px;
+            border-radius: 5px;
+            display: none;
+            line-height: 1.4;
+            z-index: 20; /* キャンバスより手前に表示 */
+        }
+        #landing-guide {
+            top: 10px;
+            right: 10px;
+            left: auto; /* 右寄せにするため */
+            text-align: left;
+        }
+        #game-title { /* ゲームタイトルのスタイル */
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: pink; /* タイトル色 */
+            font-size: 2.5em;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7); /* 影で視認性向上 */
+            z-index: 50; /* 他の要素より手前に表示 */
+            pointer-events: none; /* クリックイベントを無効化 */
+            white-space: nowrap; /* タイトルが改行されないように */
+        }
+
+        /* スマートフォン用操作ボタンのスタイル */
+        .controls-container {
+            position: absolute;
+            bottom: 10px;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            z-index: 60; /* キャンバスより手前に表示 */
+            padding: 0 10px;
+            box-sizing: border-box; /* パディングを幅に含める */
+        }
+
+        .control-button {
+            background-color: rgba(0, 0, 0, 0.5);
+            color: white;
+            padding: 15px 20px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.8em;
+            cursor: pointer;
+            user-select: none; /* テキスト選択を無効化 */
+            touch-action: manipulation; /* ダブルタップズームを防ぐ */
+            opacity: 0.8;
+            transition: opacity 0.2s;
+            flex-shrink: 0; /* ボタンが縮まないように */
+        }
+
+        .control-button:active {
+            opacity: 1;
+            background-color: rgba(0, 0, 0, 0.7);
+        }
+
+        .horizontal-controls {
+            display: flex;
+            gap: 10px; /* ボタン間の隙間 */
+        }
+
+        .vertical-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        /* 画面左右の仮想ボタン領域 */
+        .touch-area {
+            position: absolute;
+            top: 0;
+            height: 100%;
+            width: 25%; /* 画面の25%を左右の操作エリアとする */
+            z-index: 10; /* キャンバスより上、UIボタンより下 */
+            /* background-color: rgba(255, 0, 0, 0.1); /* デバッグ用 */
+        }
+
+        #left-touch-area {
+            left: 0;
+        }
+
+        #right-touch-area {
+            right: 0;
+        }
+
+        /* スマホでの表示を調整 */
+        @media (max-width: 768px) {
+            #game-title {
+                font-size: 1.8em; /* スマホではタイトルを少し小さく */
+            }
+            #message-overlay {
+                font-size: 2.5em;
+            }
+            #message-overlay button {
+                font-size: 1.2em;
+                padding: 8px 15px;
+            }
+            /* #emergency-message { 緊急着陸要素削除のため不要
+                font-size: 3em;
+            } */
+            #timer-display, #landing-guide {
+                font-size: 1em;
+                padding: 3px 6px;
+            }
+            .control-button {
+                padding: 10px 15px;
+                font-size: 1.5em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <div id="game-title">飛び立て！未来の空へ！</div>
+    <div id="timer-display"></div>
+    <div id="landing-guide"></div>
+
+    <div class="controls-container">
+        <div class="horizontal-controls">
+            <button id="left-button" class="control-button">←</button>
+            <button id="right-button" class="control-button">→</button>
+        </div>
+        <div class="vertical-controls">
+            <button id="up-button" class="control-button">↑</button>
+            <button id="down-button" class="control-button">↓</button>
+        </div>
+    </div>
+
+    <div id="left-touch-area" class="touch-area"></div>
+    <div id="right-touch-area" class="touch-area"></div>
+
+    <div id="message-overlay">
+        <span id="game-status-message"></span>
+        <button id="restart-button">リトライ</button>
+        </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const messageOverlay = document.getElementById('message-overlay');
+        const gameStatusMessage = document.getElementById('game-status-message');
+        const restartButton = document.getElementById('restart-button');
+        // const emergencyMessageDiv = document.getElementById('emergency-message'); // 緊急着陸要素削除
+        const timerDisplay = document.getElementById('timer-display');
+        const landingGuide = document.getElementById('landing-guide');
+        const gameTitleDisplay = document.getElementById('game-title');
+
+        // スマホ操作ボタン要素
+        const upButton = document.getElementById('up-button');
+        const downButton = document.getElementById('down-button');
+        const leftButton = document.getElementById('left-button');
+        const rightButton = document.getElementById('right-button');
+        const controlsContainer = document.querySelector('.controls-container');
+
+        // 仮想タッチエリア要素
+        const leftTouchArea = document.getElementById('left-touch-area');
+        const rightTouchArea = document.getElementById('right-touch-area');
+
+
+        // const warningSound = new Audio('https://freesound.org/data/previews/144/144422_2644265-lq.mp3'); // 緊急着陸要素削除
+        // warningSound.loop = true; // 緊急着陸要素削除
+        // warningSound.volume = 0.3; // 緊急着陸要素削除
+
+        // 音声読み上げオブジェクトの準備
+        const synth = window.speechSynthesis;
+        const utterance = new SpeechSynthesisUtterance();
+        utterance.lang = 'en-US'; // 英語で読み上げ（管制塔の雰囲気）
+        utterance.volume = 1;     // 音量
+        utterance.rate = 1.0;     // 速度
+        utterance.pitch = 1.0;    // ピッチ
+
+        // ゲームの状態
+        let gameActive = false; // 初期状態では操作不可
+        // let emergencyLandingEventActive = false; // 緊急着陸要素削除
+        // let emergencyLandingStartTime = 0; // 緊急着陸要素削除
+        // const emergencyLandingDuration = 5000; // 緊急着陸要素削除
+
+        // ゲームフェーズ管理
+        const GAME_PHASE = {
+            INITIAL_WAIT: 0,
+            TAKEOFF_CLEARANCE: 1,
+            FLIGHT: 2,
+            LANDING_CLEARANCE: 3,
+            LANDING: 4,
+            GAME_OVER: 5,
+            GAME_CLEAR: 6
+        };
+        let currentPhase = GAME_PHASE.INITIAL_WAIT;
+
+        // 離陸許可メッセージ関連
+        let showTakeOffClearance = true;
+        const takeOffClearanceDuration = 3000; // 3秒間表示
+        let takeOffClearanceStartTime;
+        let takeOffClearanceSpoken = false; // 読み上げ済みかどうかのフラグ
+
+        // 飛行フェーズのタイマー
+        let flightTimeElapsed = 0;
+        const flightDurationRequired = 20 * 1000; // 飛行時間目標を20秒に延長
+
+        // 着陸許可メッセージ関連
+        let showLandingClearance = false;
+        const landingClearanceDuration = 5000; // 5秒間表示
+        let landingClearanceStartTime;
+        let landingClearanceSpoken = false; // 読み上げ済みかどうかのフラグ
+
+        // 飛行機の初期設定 (原寸大の比率で初期化)
+        const initialCanvasWidth = 800;
+        const initialCanvasHeight = 600;
+        let planeX = initialCanvasWidth / 2;
+        let planeY = initialCanvasHeight - 50;
+        const planeWidth = 60;
+        const planeHeight = 40;
+        let planeSpeedX = 0;
+        let planeSpeedY = 0;
+        const acceleration = 0.2;
+        const gravity = 0.1;
+        const lift = -0.5;
+        const maxGroundSpeed = 5;
+        const maxAirSpeedY = 8; // 最大上昇・下降速度
+        let isInAir = false;
+        // const flightAltitudeThreshold = 150; // 雲が出現し始める高度 (canvas.height - 150より上) // 未使用のため削除
+        const airportDisappearAltitude = initialCanvasHeight - 200; // この高度を超えると空港が消える
+        const airportReappearAltitude = initialCanvasHeight - 100; // この高度を下回ると空港が出現
+
+        // 滑走路の設定 (原寸大の比率で初期化)
+        const runwayHeight = 80;
+        let runwayY = initialCanvasHeight - runwayHeight;
+        const runwayColor = '#808080';
+        const runwayLineColor = '#FFF';
+        const runwayLineWidth = 5;
+
+        // 空港施設の設定 (原寸大の比率で初期化)
+        // const airportBaseY = runwayY + runwayHeight; // 未使用のため削除
+        const terminalWidth = 150;
+        const terminalHeight = 80;
+        const terminalColor = '#A9A9A9';
+
+        const controlTowerWidth = 20;
+        const controlTowerHeight = 100;
+        const controlTowerColor = '#696969';
+        let controlTowerX = initialCanvasWidth / 2 + 100 + 150 / 2 + 20 + controlTowerWidth / 2;
+        let controlTowerY = runwayY + runwayHeight - terminalHeight - controlTowerHeight - 20;
+
+        const apronColor = '#606060';
+        const apronWidth = 300;
+        const apronHeight = 100;
+
+        // 雲の設定
+        const clouds = [];
+        const maxClouds = 10;
+        const cloudSpeed = 1;
+
+        // 他の飛行機の設定
+        const otherPlanes = [];
+        const maxOtherPlanes = 3;
+        const otherPlaneSpeedMin = 2;
+        const otherPlaneSpeedMax = 4;
+        const otherPlaneSpawnInterval = 300;
+        let otherPlaneSpawnTimer = 0;
+
+        // キーボードとタッチの状態を統合管理
+        const keys = {
+            ArrowUp: false,
+            ArrowDown: false,
+            ArrowLeft: false,
+            ArrowRight: false,
+            Space: false,
+            // タッチボタンの状態
+            UpButton: false,
+            DownButton: false,
+            LeftButton: false,
+            RightButton: false
+        };
+
+        // 着陸成功条件の閾値（大幅に緩和）
+        const targetVerticalSpeed = 5; // 絶対値5未満に緩和
+        const landingAltitudeTolerance = 20; // 滑走路の高さから上下20px以内であればOK
+        let targetLandingAltitude = runwayY - planeHeight / 2; // 地面に接するY座標
+
+        // キャンバスのリサイズ処理
+        function resizeCanvas() {
+            const displayWidth = canvas.clientWidth;
+            const displayHeight = canvas.clientHeight;
+
+            // アスペクト比を維持して内部解像度を設定
+            let aspectRatio = initialCanvasWidth / initialCanvasHeight;
+            let newWidth, newHeight;
+
+            if (displayWidth / displayHeight > aspectRatio) {
+                newHeight = displayHeight;
+                newWidth = displayHeight * aspectRatio;
+            } else {
+                newWidth = displayWidth;
+                newHeight = displayWidth / aspectRatio;
+            }
+
+            canvas.width = newWidth;
+            canvas.height = newHeight;
+
+            // ゲーム要素の座標を新しいキャンバスサイズに合わせてスケール
+            const scaleX = canvas.width / initialCanvasWidth;
+            const scaleY = canvas.height / initialCanvasHeight;
+
+            // 固定要素のY座標を再計算
+            runwayY = canvas.height - runwayHeight * scaleY;
+            targetLandingAltitude = runwayY - planeHeight * scaleY / 2; // 着陸目標高度もスケール
+            controlTowerX = (initialCanvasWidth / 2 + 100 + 150 / 2 + 20 + controlTowerWidth / 2) * scaleX;
+            controlTowerY = runwayY + runwayHeight * scaleY - terminalHeight * scaleY - controlTowerHeight * scaleY - 20 * scaleY;
+        }
+
+        // 音声読み上げ関数
+        function speakMessage(message) {
+            if (synth.speaking) {
+                synth.cancel(); // 既に読み上げ中の場合はキャンセル
+            }
+            utterance.text = message;
+            synth.speak(utterance);
+        }
+
+        // ゲームのリセット関数
+        function resetGame() {
+            // 初期設定値に基づいてリセット
+            planeX = initialCanvasWidth / 2;
+            planeY = initialCanvasHeight - 50;
+            planeSpeedX = 0;
+            planeSpeedY = 0;
+            isInAir = false;
+            gameActive = false;
+            // emergencyLandingEventActive = false; // 緊急着陸要素削除
+            // emergencyLandingStartTime = 0; // 緊急着陸要素削除
+            clouds.length = 0;
+            otherPlanes.length = 0;
+            otherPlaneSpawnTimer = 0;
+            flightTimeElapsed = 0;
+            timerDisplay.style.display = 'none';
+            landingGuide.style.display = 'none';
+            // warningSound.pause(); // 緊急着陸要素削除
+            // warningSound.currentTime = 0; // 緊急着陸要素削除
+
+            messageOverlay.style.display = 'none';
+            // emergencyMessageDiv.style.display = 'none'; // 緊急着陸要素削除
+
+            showTakeOffClearance = true;
+            takeOffClearanceSpoken = false;
+            showLandingClearance = false;
+            landingClearanceSpoken = false;
+
+            currentPhase = GAME_PHASE.TAKEOFF_CLEARANCE; // 開始フェーズを設定
+            takeOffClearanceStartTime = Date.now();
+
+            // 操作ボタンを表示状態に戻す（離陸前なので）
+            showControls();
+        }
+
+        // 操作ボタンの表示/非表示を切り替える関数
+        function showControls() {
+            controlsContainer.style.display = 'flex';
+            leftTouchArea.style.display = 'block';
+            rightTouchArea.style.display = 'block';
+        }
+
+        // function hideControls() { // 常に表示するので不要
+        //     controlsContainer.style.display = 'none';
+        //     leftTouchArea.style.display = 'none';
+        //     rightTouchArea.style.display = 'none';
+        // }
+
+        /**
+         * 滑走路を描画する関数
+         * スケールを考慮して描画
+         */
+        function drawRunway() {
+            const scaleY = canvas.height / initialCanvasHeight;
+            const scaledRunwayY = canvas.height - runwayHeight * scaleY;
+            const scaledRunwayHeight = runwayHeight * scaleY;
+            const scaledRunwayLineWidth = runwayLineWidth * scaleY;
+
+            ctx.fillStyle = runwayColor;
+            ctx.fillRect(0, scaledRunwayY, canvas.width, scaledRunwayHeight);
+            ctx.strokeStyle = runwayLineColor;
+            ctx.lineWidth = scaledRunwayLineWidth;
+            
+            const lineDashLength = 20 * (canvas.width / initialCanvasWidth);
+            const lineGapLength = 30 * (canvas.width / initialCanvasWidth);
+            const numDashes = canvas.width / (lineDashLength + lineGapLength);
+            
+            ctx.beginPath();
+            for (let i = 0; i < numDashes; i++) {
+                const startX = i * (lineDashLength + lineGapLength);
+                ctx.moveTo(startX, scaledRunwayY + scaledRunwayHeight / 2);
+                ctx.lineTo(startX + lineDashLength, scaledRunwayY + scaledRunwayHeight / 2);
+            }
+            ctx.stroke();
+        }
+
+        /**
+         * 空港施設を描画する関数
+         * スケールを考慮して描画
+         */
+        function drawAirport() {
+            const scaleX = canvas.width / initialCanvasWidth;
+            const scaleY = canvas.height / initialCanvasHeight;
+
+            // 地面
+            ctx.fillStyle = '#C0C0C0';
+            ctx.fillRect(0, runwayY, canvas.width, canvas.height - runwayY);
+
+            // 駐機場 (エプロン)
+            ctx.fillStyle = apronColor;
+            ctx.fillRect((initialCanvasWidth / 2 + 100) * scaleX, (runwayY + runwayHeight * scaleY - apronHeight * scaleY), apronWidth * scaleX, apronHeight * scaleY);
+            ctx.fillRect((initialCanvasWidth / 2 - 400) * scaleX, (runwayY + runwayHeight * scaleY - apronHeight * scaleY), apronWidth * scaleX, apronHeight * scaleY);
+
+            // 誘導路 (滑走路と駐機場をつなぐ)
+            ctx.fillStyle = apronColor;
+            ctx.fillRect((initialCanvasWidth / 2 + 100) * scaleX, runwayY + runwayHeight * scaleY - 20 * scaleY, 20 * scaleX, 20 * scaleY);
+            ctx.fillRect((initialCanvasWidth / 2 - 400 + apronWidth - 20) * scaleX, runwayY + runwayHeight * scaleY - 20 * scaleY, 20 * scaleX, 20 * scaleY);
+
+            // ターミナルビル
+            ctx.fillStyle = terminalColor;
+            ctx.fillRect((initialCanvasWidth / 2 + 100 + apronWidth / 2 - terminalWidth / 2) * scaleX, (runwayY + runwayHeight * scaleY - apronHeight * scaleY - terminalHeight * scaleY), terminalWidth * scaleX, terminalHeight * scaleY);
+
+            // 管制塔
+            ctx.fillStyle = controlTowerColor;
+            ctx.fillRect(controlTowerX - (controlTowerWidth / 2) * scaleX, controlTowerY, controlTowerWidth * scaleX, controlTowerHeight * scaleY);
+            ctx.fillStyle = '#ADD8E6'; // 窓
+            ctx.fillRect(controlTowerX - (controlTowerWidth / 2) * scaleX, controlTowerY - 15 * scaleY, controlTowerWidth * scaleX, 15 * scaleY);
+        }
+
+        /**
+         * 飛行機を描画する関数
+         * スケールを考慮して描画
+         */
+        function drawPlane(x, y, width, height, color = '#A52A2A') {
+            const scaleX = canvas.width / initialCanvasWidth;
+            const scaleY = canvas.height / initialCanvasHeight;
+            
+            const scaledX = x * scaleX;
+            const scaledY = y * scaleY;
+            const scaledWidth = width * scaleX;
+            const scaledHeight = height * scaleY;
+
+            ctx.fillStyle = color;
+            ctx.fillRect(scaledX - scaledWidth / 2, scaledY - scaledHeight / 2, scaledWidth, scaledHeight);
+            ctx.fillRect(scaledX - scaledWidth / 2 - 20 * scaleX, scaledY - scaledHeight / 2 + 10 * scaleY, 20 * scaleX, 20 * scaleY);
+            ctx.fillRect(scaledX + scaledWidth / 2, scaledY - scaledHeight / 2 + 10 * scaleY, 20 * scaleX, 20 * scaleY);
+            ctx.fillRect(scaledX - 5 * scaleX, scaledY + scaledHeight / 2, 10 * scaleX, 15 * scaleY);
+            ctx.fillStyle = '#333';
+            ctx.fillRect(scaledX - 10 * scaleX, scaledY - scaledHeight / 2 - 5 * scaleY, 20 * scaleX, 10 * scaleY);
+        }
+
+        /**
+         * 雲を描画する関数
+         * スケールを考慮して描画
+         */
+        function drawCloud(x, y, size) {
+            const scaleX = canvas.width / initialCanvasWidth;
+            const scaleY = canvas.height / initialCanvasHeight;
+
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.beginPath();
+            ctx.arc(x * scaleX, y * scaleY, size * Math.min(scaleX, scaleY), 0, Math.PI * 2);
+            ctx.arc((x + size * 0.6) * scaleX, (y - size * 0.3) * scaleY, size * 0.8 * Math.min(scaleX, scaleY), 0, Math.PI * 2);
+            ctx.arc((x - size * 0.7) * scaleX, (y - size * 0.2) * scaleY, size * 0.9 * Math.min(scaleX, scaleY), 0, Math.PI * 2);
+            ctx.arc((x + size * 0.3) * scaleX, (y + size * 0.4) * scaleY, size * 0.7 * Math.min(scaleX, scaleY), 0, Math.PI * 2);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        /**
+         * ゲームの状態を更新する関数
+         */
+        function updateGame() {
+            if (!gameActive) {
+                // 各フェーズの開始待機
+                switch(currentPhase) {
+                    case GAME_PHASE.TAKEOFF_CLEARANCE:
+                        if (showTakeOffClearance && !takeOffClearanceSpoken) {
+                            speakMessage("Cleared for take off.");
+                            takeOffClearanceSpoken = true;
+                        }
+                        if (Date.now() - takeOffClearanceStartTime > takeOffClearanceDuration) {
+                            showTakeOffClearance = false;
+                            gameActive = true; // ゲーム開始
+                            currentPhase = GAME_PHASE.FLIGHT;
+                            flightTimeElapsed = 0; // 飛行時間計測開始
+                            timerDisplay.style.display = 'block';
+                        }
+                        break;
+                    case GAME_PHASE.LANDING_CLEARANCE:
+                        if (showLandingClearance && !landingClearanceSpoken) {
+                            speakMessage("Cleared to land.");
+                            landingClearanceSpoken = true;
+                        }
+                        if (Date.now() - landingClearanceStartTime > landingClearanceDuration) {
+                            showLandingClearance = false;
+                            gameActive = true; // 着陸フェーズ開始
+                            currentPhase = GAME_PHASE.LANDING;
+                            landingGuide.style.display = 'block'; // 着陸ガイド表示
+                            showControls(); // 着陸時は操作ボタンを表示
+                        }
+                        break;
+                }
+                return; // ゲームがアクティブでない間は、更新処理をスキップ
+            }
+
+            // 飛行フェーズ中のタイマー更新
+            if (currentPhase === GAME_PHASE.FLIGHT) {
+                flightTimeElapsed += 1000 / 60; // 1フレームを約1/60秒とする
+                const remainingTime = Math.max(0, (flightDurationRequired - flightTimeElapsed) / 1000);
+                timerDisplay.innerText = `飛行時間: ${Math.floor(flightTimeElapsed / 1000)}秒 / ${flightDurationRequired / 1000}秒`;
+
+                if (flightTimeElapsed >= flightDurationRequired) {
+                    // 飛行時間達成したら着陸フェーズへ移行
+                    gameActive = false; // 一時停止
+                    showLandingClearance = true;
+                    landingClearanceStartTime = Date.now();
+                    currentPhase = GAME_PHASE.LANDING_CLEARANCE;
+                    timerDisplay.style.display = 'none'; // タイマー非表示
+                    // 他の飛行機をクリア
+                    otherPlanes.length = 0;
+                    otherPlaneSpawnTimer = 0;
+                    clouds.length = 0; // 雲もリセットして着陸フェーズへ備える
+                    showControls(); // 着陸フェーズ移行時に操作ボタンを表示
+                }
+            }
+            
+            // キーボードとタッチボタンの入力を統合
+            if (keys.ArrowRight || keys.RightButton) {
+                planeSpeedX += acceleration;
+                if (planeSpeedX > maxGroundSpeed) planeSpeedX = maxGroundSpeed;
+            } else if (keys.ArrowLeft || keys.LeftButton) {
+                planeSpeedX -= acceleration;
+                if (planeSpeedX < -maxGroundSpeed) planeSpeedX = -maxGroundSpeed;
+            } else {
+                if (!isInAir) { // 地上にいる時のみ減速
+                    if (planeSpeedX > 0) {
+                        planeSpeedX -= acceleration / 2;
+                        if (planeSpeedX < 0) planeSpeedX = 0;
+                    } else if (planeSpeedX < 0) {
+                        planeSpeedX += acceleration / 2;
+                        if (planeSpeedX > 0) planeSpeedX = 0;
+                    }
+                }
+            }
+
+            if (!isInAir) {
+                // 地上での操作
+                planeX += planeSpeedX;
+
+                // 離陸判定 (FLIGHTフェーズの時のみ離陸可能)
+                if ((keys.ArrowUp || keys.UpButton) && planeSpeedX > 3 && currentPhase === GAME_PHASE.FLIGHT) {
+                    planeSpeedY = lift;
+                    isInAir = true;
+                }
+
+                // 地面に接している状態に固定
+                planeY = initialCanvasHeight - 50;
+                
+                if (planeX < planeWidth / 2) {
+                    planeX = planeWidth / 2;
+                    planeSpeedX = 0;
+                }
+                if (planeX > initialCanvasWidth - planeWidth / 2) {
+                    planeX = initialCanvasWidth - planeWidth / 2;
+                    planeSpeedX = 0;
+                }
+
+            } else { // 空中での操作
+                if (keys.ArrowUp || keys.UpButton) {
+                    planeSpeedY = Math.max(-maxAirSpeedY, planeSpeedY + lift);
+                }
+                if (keys.ArrowDown || keys.DownButton) {
+                    planeSpeedY = Math.min(maxAirSpeedY, planeSpeedY + gravity);
+                }
+
+                planeSpeedY += gravity;
+                planeY += planeSpeedY;
+                planeX += planeSpeedX * 0.5; // 空中では水平速度を少し維持
+
+                if (planeY < planeHeight / 2) { // 画面上端にぶつからないように
+                    planeY = planeHeight / 2;
+                    planeSpeedY = 0;
+                }
+                if (planeX < planeWidth / 2) planeX = planeWidth / 2;
+                if (planeX > initialCanvasWidth - planeWidth / 2) planeX = initialCanvasWidth - planeWidth / 2;
+                
+                // 強制着陸イベント中の処理（削除）
+                // if (emergencyLandingEventActive) {
+                //     const timeRemaining = Math.max(0, emergencyLandingDuration - (Date.now() - emergencyLandingStartTime));
+                //     emergencyMessageDiv.innerText = `緊急着陸まで: ${Math.ceil(timeRemaining / 1000)}秒`;
+                //     if (timeRemaining <= 0) {
+                //         gameOver('緊急着陸時間切れ！不時着に失敗しました。');
+                //         return;
+                //     }
+                //     planeSpeedY = Math.min(maxAirSpeedY, planeSpeedY + gravity * 1.5);
+                // }
+
+                // 着陸判定: LANDINGフェーズ中
+                const currentScaledTargetLandingAltitude = targetLandingAltitude;
+                const currentScaledLandingAltitudeTolerance = landingAltitudeTolerance * (canvas.height / initialCanvasHeight);
+
+                if (currentPhase === GAME_PHASE.LANDING && planeY * (canvas.height / initialCanvasHeight) >= currentScaledTargetLandingAltitude - currentScaledLandingAltitudeTolerance) {
+                    let failureReason = [];
+
+                    // 高度チェック
+                    if (planeY * (canvas.height / initialCanvasHeight) > currentScaledTargetLandingAltitude + currentScaledLandingAltitudeTolerance || planeY * (canvas.height / initialCanvasHeight) < currentScaledTargetLandingAltitude - currentScaledLandingAltitudeTolerance) {
+                         failureReason.push('着地位置が滑走路から離れすぎました！');
+                    }
+
+                    // 垂直速度チェック
+                    if (Math.abs(planeSpeedY) >= targetVerticalSpeed) {
+                        failureReason.push(`接地速度(${Math.abs(planeSpeedY).toFixed(1)})が速すぎます！もう少し優しく着地してください。`);
+                    }
+
+                    if (failureReason.length === 0) {
+                        isInAir = false;
+                        planeSpeedY = 0;
+                        planeY = initialCanvasHeight - 50;
+                        gameClear('着陸成功！ゲームクリア！');
+                        return;
+                    } else {
+                        // 失敗した場合、具体的な理由を表示
+                        gameOver('着陸失敗！' + failureReason.join(' '));
+                        return;
+                    }
+                } else if (planeY * (canvas.height / initialCanvasHeight) > canvas.height + planeHeight * (canvas.height / initialCanvasHeight)) {
+                    // 画面下まで落ちたら無条件でゲームオーバー（高度が足りずに墜落）
+                    gameOver('着陸に失敗しました！高度が低すぎました。');
+                    return;
+                }
+
+                // 雲の生成と移動
+                if (planeY < airportDisappearAltitude && (currentPhase === GAME_PHASE.FLIGHT || currentPhase === GAME_PHASE.LANDING_CLEARANCE)) {
+                    if (clouds.length < maxClouds && Math.random() < 0.01) {
+                        clouds.push({
+                            x: initialCanvasWidth,
+                            y: Math.random() * (initialCanvasHeight - runwayHeight - 100),
+                            size: Math.random() * 50 + 30
+                        });
+                    }
+                }
+                for (let i = clouds.length - 1; i >= 0; i--) {
+                    clouds[i].x -= cloudSpeed;
+                    if (clouds[i].x < -clouds[i].size) {
+                        clouds.splice(i, 1);
+                    }
+                }
+
+                // 他の飛行機の生成と移動 (FLIGHTフェーズ中のみ)
+                if (currentPhase === GAME_PHASE.FLIGHT) { // && !emergencyLandingEventActive を削除
+                    otherPlaneSpawnTimer++;
+                    if (otherPlanes.length < maxOtherPlanes && otherPlaneSpawnTimer >= otherPlaneSpawnInterval) {
+                        if (Math.random() < 0.5) { // 左から出現
+                            otherPlanes.push({
+                                x: -planeWidth,
+                                y: Math.random() * (initialCanvasHeight - runwayHeight - 100) + 50,
+                                speed: Math.random() * (otherPlaneSpeedMax - otherPlaneSpeedMin) + otherPlaneSpeedMin,
+                                direction: 1
+                            });
+                        } else { // 右から出現
+                            otherPlanes.push({
+                                x: initialCanvasWidth + planeWidth,
+                                y: Math.random() * (initialCanvasHeight - runwayHeight - 100) + 50,
+                                speed: Math.random() * (otherPlaneSpeedMax - otherPlaneSpeedMin) + otherPlaneSpeedMin,
+                                direction: -1
+                            });
+                        }
+                        otherPlaneSpawnTimer = 0;
+                    }
+
+                    for (let i = 0; i < otherPlanes.length; i++) {
+                        const op = otherPlanes[i];
+                        op.x += op.speed * op.direction;
+                        if (op.direction === 1 && op.x > initialCanvasWidth + planeWidth * 2 ||
+                            op.direction === -1 && op.x < -planeWidth * 2) {
+                            otherPlanes.splice(i, 1);
+                            i--;
+                        }
+                    }
+
+                    // 衝突判定
+                    for (let i = 0; i < otherPlanes.length; i++) {
+                        const op = otherPlanes[i];
+                        if (
+                            planeX - planeWidth / 2 < op.x + planeWidth / 2 &&
+                            planeX + planeWidth / 2 > op.x - planeWidth / 2 &&
+                            planeY - planeHeight / 2 < op.y + planeHeight / 2 &&
+                            planeY + planeHeight / 2 > op.y - planeHeight / 2
+                        ) {
+                            gameOver('他の飛行機と衝突！墜落しました！');
+                            return;
+                        }
+                    }
+                }
+
+                // 緊急着陸イベントの開始 (削除)
+                // if (!emergencyLandingEventActive && currentPhase === GAME_PHASE.FLIGHT && Math.random() < 0.0005) {
+                //     startEmergencyLandingEvent();
+                // }
+            }
+        }
+
+        /**
+         * ゲーム要素を描画する関数
+         */
+        function drawGame() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height); // 画面をクリア
+
+            const scaleX = canvas.width / initialCanvasWidth;
+            const scaleY = canvas.height / initialCanvasHeight;
+
+            // 雲を描画 (飛行機の高度によって表示)
+            if (planeY < airportDisappearAltitude) {
+                for (const cloud of clouds) {
+                    drawCloud(cloud.x, cloud.y, cloud.size);
+                }
+            }
+
+            // 空港の描画 (特定のフェーズと高度でのみ表示)
+            const isAirportVisible = (currentPhase === GAME_PHASE.TAKEOFF_CLEARANCE || 
+                                      currentPhase === GAME_PHASE.LANDING_CLEARANCE || 
+                                      (currentPhase === GAME_PHASE.FLIGHT && planeY > airportDisappearAltitude) ||
+                                      (currentPhase === GAME_PHASE.LANDING && planeY > airportReappearAltitude)); // emergencyLandingEventActive を削除
+
+            if (isAirportVisible) {
+                drawRunway();
+                drawAirport();
+            }
+            
+            drawPlane(planeX, planeY, planeWidth, planeHeight); // プレイヤーの飛行機
+
+            // 他の飛行機を描画
+            for (const op of otherPlanes) {
+                drawPlane(op.x, op.y, planeWidth * 0.8, planeHeight * 0.8, '#008000'); // 他の飛行機は少し小さく緑色
+            }
+
+            // 離陸許可メッセージ
+            if (showTakeOffClearance && currentPhase === GAME_PHASE.TAKEOFF_CLEARANCE) {
+                ctx.font = `${30 * scaleY}px Arial Black`;
+                ctx.fillStyle = 'red';
+                ctx.textAlign = 'center';
+                ctx.fillText("Cleared for take off", controlTowerX, controlTowerY - 30 * scaleY);
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 2 * Math.min(scaleX, scaleY);
+                ctx.strokeText("Cleared for take off", controlTowerX, controlTowerY - 30 * scaleY);
+            }
+
+            // 着陸許可メッセージ
+            if (showLandingClearance && currentPhase === GAME_PHASE.LANDING_CLEARANCE) {
+                ctx.font = `${30 * scaleY}px Arial Black`;
+                ctx.fillStyle = 'red';
+                ctx.textAlign = 'center';
+                ctx.fillText("Cleared to land", controlTowerX, controlTowerY - 30 * scaleY);
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 2 * Math.min(scaleX, scaleY);
+                ctx.strokeText("Cleared to land", controlTowerX, controlTowerY - 30 * scaleY);
+            }
+
+            // 着陸ガイドの表示
+            if (currentPhase === GAME_PHASE.LANDING && gameActive) { // emergencyLandingEventActive を削除
+                landingGuide.style.display = 'block';
+
+                const currentAltitude = Math.floor(initialCanvasHeight - planeY);
+                const goalAltitude = Math.floor(initialCanvasHeight - (initialCanvasHeight - runwayHeight) + planeHeight / 2);
+
+                const currentVspeed = (planeSpeedY * 10).toFixed(1);
+                const currentHspeed = (planeSpeedX * 10).toFixed(1);
+
+                let guideText = '--- 着陸ガイド ---\n';
+                
+                guideText += `高度: ${currentAltitude}m (目標: ${goalAltitude}m ±${landingAltitudeTolerance}m)\n`;
+                if (currentAltitude > goalAltitude + landingAltitudeTolerance) {
+                    guideText += '  ↑ 高すぎます！もっと下降を。\n';
+                } else if (currentAltitude < goalAltitude - landingAltitudeTolerance) {
+                    guideText += '  ↓ 低すぎます！少し上昇を。\n';
+                } else {
+                    guideText += '  ◎ 高度良好\n';
+                }
+
+                guideText += `垂直速度: ${currentVspeed}km/h (目標: <${(targetVerticalSpeed * 10).toFixed(1)}km/h)\n`;
+                if (Math.abs(planeSpeedY) >= targetVerticalSpeed) {
+                    guideText += '  ↓ 垂直速度が速すぎます！優しく。\n';
+                } else {
+                    guideText += '  ◎ 垂直速度良好\n';
+                }
+
+                guideText += `水平速度: ${currentHspeed}km/h\n`; 
+
+                landingGuide.innerText = guideText;
+            } else {
+                landingGuide.style.display = 'none';
+            }
+        }
+
+        /**
+         * ゲームオーバー処理
+         */
+        function gameOver(message) {
+            gameActive = false;
+            currentPhase = GAME_PHASE.GAME_OVER;
+            gameStatusMessage.innerText = message;
+            messageOverlay.style.display = 'flex';
+            // emergencyMessageDiv.style.display = 'none'; // 緊急着陸要素削除
+            timerDisplay.style.display = 'none';
+            landingGuide.style.display = 'none';
+            // warningSound.pause(); // 緊急着陸要素削除
+            // warningSound.currentTime = 0; // 緊急着陸要素削除
+            if (synth.speaking) {
+                synth.cancel();
+            }
+            showControls();
+        }
+
+        /**
+         * ゲームクリア処理
+         */
+        function gameClear(message) {
+            gameActive = false;
+            currentPhase = GAME_PHASE.GAME_CLEAR;
+            gameStatusMessage.innerText = message;
+            messageOverlay.style.display = 'flex';
+            // emergencyMessageDiv.style.display = 'none'; // 緊急着陸要素削除
+            timerDisplay.style.display = 'none';
+            landingGuide.style.display = 'none';
+            // warningSound.pause(); // 緊急着陸要素削除
+            // warningSound.currentTime = 0; // 緊急着陸要素削除
+            if (synth.speaking) {
+                synth.cancel();
+            }
+            showControls();
+        }
+
+        /**
+         * 緊急着陸イベントを開始（削除）
+         */
+        // function startEmergencyLandingEvent() {
+        //     emergencyLandingEventActive = true;
+        //     emergencyMessageDiv.style.display = 'block';
+        //     emergencyLandingStartTime = Date.now();
+            
+        //     otherPlanes.length = 0;
+        //     otherPlaneSpawnTimer = 0;
+            
+        //     warningSound.play();
+        //     if (synth.speaking) {
+        //         synth.cancel();
+        //     }
+        //     speakMessage("Emergency! Emergency! Prepare for immediate landing!");
+        //     showControls();
+        // }
+
+        /**
+         * ゲームループ
+         */
+        function gameLoop() {
+            updateGame();
+            drawGame();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // キーボードイベントリスナー
+        document.addEventListener('keydown', (e) => {
+            if (!gameActive && e.key !== 'Space') return; // Spaceキーは後でスタートに使う可能性があるので残す
+
+            if (keys.hasOwnProperty(e.key)) {
+                keys[e.key] = true;
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (keys.hasOwnProperty(e.key)) {
+                keys[e.key] = false;
+            }
+        });
+
+        // タッチボタンのイベントリスナー
+        function setupTouchButton(buttonElement, keyName) {
+            buttonElement.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                if (gameActive) keys[keyName] = true;
+            });
+            buttonElement.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                keys[keyName] = false;
+            });
+            buttonElement.addEventListener('touchcancel', (e) => {
+                e.preventDefault();
+                keys[keyName] = false;
+            });
+        }
+
+        setupTouchButton(upButton, 'UpButton');
+        setupTouchButton(downButton, 'DownButton');
+        setupTouchButton(leftButton, 'LeftButton');
+        setupTouchButton(rightButton, 'RightButton');
+
+        // 仮想タッチエリアのイベントリスナー
+        leftTouchArea.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (gameActive) keys.LeftButton = true;
+        });
+        leftTouchArea.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            keys.LeftButton = false;
+        });
+        leftTouchArea.addEventListener('touchcancel', (e) => {
+            e.preventDefault();
+            keys.LeftButton = false;
+        });
+
+        rightTouchArea.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (gameActive) keys.RightButton = true;
+        });
+        rightTouchArea.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            keys.RightButton = false;
+        });
+        rightTouchArea.addEventListener('touchcancel', (e) => {
+            e.preventDefault();
+            keys.RightButton = false;
+        });
+
+
+        // リトライボタンのイベントリスナー
+        restartButton.addEventListener('click', resetGame);
+
+        // ウィンドウリサイズイベント
+        window.addEventListener('resize', resizeCanvas);
+
+        // ゲーム開始
+        resizeCanvas();
+        resetGame();
+        gameLoop();
+    </script>
+</body>
+</html>
